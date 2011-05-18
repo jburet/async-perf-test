@@ -1,23 +1,29 @@
 package fr.jbu.asyncperf.user
 
-import action.Action
 import action.ActionResult.ActionResult
+import action.{EndOfThinktime, Action}
 import collection.mutable.ListBuffer
 import fr.jbu.asyncperf.core.injector.{InjectorResult, Request, Response}
-import akka.actor.{ActorRef, Actor}
+import fr.jbu.asyncperf.util.Slf4jLogger
+import akka.actor.{Scheduler, ActorRef, Actor}
+import java.util.concurrent.TimeUnit
 
-abstract class User(functionSequence: ListBuffer[(User) => Action]) extends HttpCapability {
+abstract class User(functionSequence: ListBuffer[(User) => Action]) extends HttpCapability with ThinkTimeCapability with Slf4jLogger {
 
   /**
    * Index of next function to execute
    */
   private var nextFunctionIndex: Int = 0
 
-  protected var dumpActorRef: ActorRef
+  protected var processingStarted: Boolean = true
+
+  protected val dumpActorRef: Option[ActorRef]
 
   protected val dumpEnabled: Boolean
 
-  protected var reportingActorRef: ActorRef
+  protected val reportingActorRef: Option[ActorRef]
+
+  protected val userActorRef: Option[ActorRef]
 
   /**
    * Nb of time user execute sequence function
@@ -33,7 +39,7 @@ abstract class User(functionSequence: ListBuffer[(User) => Action]) extends Http
   /**
    * Last transaction executed
    */
-  var lastTransaction: InjectorResult[Request, Response] = null
+  var lastTransaction: InjectorResult[Request, Option[Response]] = null
 
   /**
    * Last action result
@@ -62,18 +68,34 @@ abstract class User(functionSequence: ListBuffer[(User) => Action]) extends Http
     }
   }
 
+  protected def startOrResumeUser = {
+    // Get next function and execute
+    while (hasNextFunction && processingStarted) {
+      val nextAction: Action = getNextFunction.apply(this)
+      // Execute next action
+      lastActionResult = nextAction.execute(this)
+    }
+
+  }
+
   /**
    * Perform
    */
-  protected def endTransaction(transaction: InjectorResult[Request, Response]) {
+  protected def endTransaction(result: InjectorResult[Request, Option[Response]]) {
     // Keep reference on last transaction. Can be usefull for action with branche (if ... else ... )
-    lastTransaction = transaction
+    lastTransaction = result
     // Dump transaction if necessary
     if (dumpEnabled) {
-      dumpActorRef ! transaction
+      dumpActorRef match {
+        case Some(dar) => dar ! result
+        case None => warn("No dump actor")
+      }
     }
     // Send result to report
-    reportingActorRef ! transaction
+    reportingActorRef match {
+      case Some(rar) => rar ! result
+      case None => warn("No reporting actor")
+    }
   }
 
 }
@@ -82,28 +104,25 @@ abstract class User(functionSequence: ListBuffer[(User) => Action]) extends Http
  * Actor representing a user.
  * This implementation call in sequence different injector client implementation
  */
-class SequentialUserActor(functionSequence: ListBuffer[(User) => Action], _dumpActorRef: ActorRef, _reportingActorRef: ActorRef, _httpClient: ActorRef, _dumpEnabled: Boolean) extends User(functionSequence) with Actor {
+class SequentialUserActor(functionSequence: ListBuffer[(User) => Action], _dumpActorRef: Option[ActorRef], _reportingActorRef: Option[ActorRef], _httpClient: Option[ActorRef], _dumpEnabled: Boolean) extends User(functionSequence) with Actor {
 
-  protected def startUser = {
-    // Get next function and execute
-    while (hasNextFunction) {
-      val nextAction: Action = getNextFunction.apply(this)
-      // Execute next action
-      lastActionResult = nextAction.execute(this)
-    }
-
-  }
+  protected val userActorRef: Option[ActorRef] = optionSelf
 
   protected def receive = {
     // Manage command
     case UserCommand.START => {
-      startUser
+      startOrResumeUser
     }
 
     // Manage message
-    case transaction: InjectorResult[Request, Response] => {
+    case result: InjectorResult[Request, Option[Response]] => {
       // Receive a response from a previous request
-      endTransaction(transaction)
+      endTransaction(result)
+    }
+
+    // End of thinktime
+    case EndOfThinktime => {
+      endOfThinkTimeCallback
     }
 
   }
@@ -115,11 +134,10 @@ class SequentialUserActor(functionSequence: ListBuffer[(User) => Action], _dumpA
   // Http capabality impl
   protected def uuid = self.uuid
 
-  protected var dumpActorRef: ActorRef = _dumpActorRef
+  protected val dumpActorRef: Option[ActorRef] = _dumpActorRef
 
-  protected var reportingActorRef: ActorRef = _reportingActorRef
+  protected val reportingActorRef: Option[ActorRef] = _reportingActorRef
 
-  protected var httpClient: ActorRef = _httpClient
-
+  protected val httpClient: Option[ActorRef] = _httpClient
 
 }

@@ -4,6 +4,6 @@ import fr.jbu.asyncperf.core.injector.InjectorRequest
 
 trait HttpClient{
 
-  def sendRequest(request:InjectorRequest[HttpRequest], startNanoTime:Long, callback: (InjectorRequest[HttpRequest],HttpResponse,Long) => Unit)
+  def sendRequest(request:InjectorRequest[HttpRequest], startNanoTime:Long, callback: (InjectorRequest[HttpRequest],Option[HttpResponse],Long) => Unit)
 
 }

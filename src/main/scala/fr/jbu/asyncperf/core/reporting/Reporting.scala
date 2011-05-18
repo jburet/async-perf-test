@@ -1,14 +1,9 @@
 package fr.jbu.asyncperf.core.reporting
 
-import akka.actor.Actor
+import fr.jbu.asyncperf.core.injector.{Response, Request, InjectorResult}
 
+trait Reporting {
 
-class Reporting {
+  def logTransaction(transaction: InjectorResult[Request, Option[Response]])
 
-}
-
-class ReportingActor extends Reporting with Actor {
-  protected def receive = {
-    case _ => println("Reporting not implemented")
-  }
 }

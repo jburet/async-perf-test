@@ -2,7 +2,7 @@ package fr.jbu.asyncperf.core.injector
 
 import akka.actor.Actor
 
-abstract class AuditedClientActor[REQ <: Request, RESP <: Response] extends Actor {
+abstract class AuditedClientActor[REQ <: Request, RESP <: Option[Response]] extends Actor {
 
   protected def makeCall(request: InjectorRequest[REQ], startNanoTime:Long)
 

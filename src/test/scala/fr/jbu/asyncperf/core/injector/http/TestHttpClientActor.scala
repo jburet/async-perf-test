@@ -18,23 +18,24 @@ class TestHttpClientActor extends WordSpec with BeforeAndAfterAll with ShouldMat
 
   "An HttpClientActor" should {
     "Send a transaction with HttpResponse" in {
-      val request: InjectorRequest[HttpRequest] =new InjectorRequest[HttpRequest](testActor.uuid, new HttpRequest("http://localhost/use_mock_client"))
+      val request: InjectorRequest[HttpRequest] = new InjectorRequest[HttpRequest](testActor.uuid, new HttpRequest("http://localhost/use_mock_client"))
 
       within(100 millis) {
         httpClientActorRef ! request
         receiveWhile(500 millis) {
-          case transaction: InjectorResult[HttpRequest, HttpResponse] => {
-            transaction.response.body should equal ("test body")
+          case transaction: InjectorResult[HttpRequest, Option[HttpResponse]] => {
+            transaction.response.get.body should equal("test body")
           }
         }
       }
     }
   }
 
-  object MockHttpClient extends HttpClient{
+  object MockHttpClient extends HttpClient {
 
-    def sendRequest(request: InjectorRequest[HttpRequest], startNanoTime:Long, callback: (InjectorRequest[HttpRequest], HttpResponse, Long) => Unit) = {
-      callback(request, new HttpResponse("test body", new HttpHeader), System.nanoTime)
+    def sendRequest(request: InjectorRequest[HttpRequest], startNanoTime: Long, callback: (InjectorRequest[HttpRequest], Option[HttpResponse], Long) => Unit) = {
+      callback(request, Some(new HttpResponse(200, "test body", "", new HttpHeader(scala.collection.mutable.Map.empty[String, String]))), System.nanoTime)
     }
   }
+
 }

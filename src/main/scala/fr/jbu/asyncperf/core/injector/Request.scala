@@ -1,5 +1,7 @@
 package fr.jbu.asyncperf.core.injector
 
-abstract class Request{
-  
+import java.util.Date
+
+abstract class Request() {
+  val timestamp: Date = new Date
 }
