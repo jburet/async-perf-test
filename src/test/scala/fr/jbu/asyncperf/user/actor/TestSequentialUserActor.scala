@@ -11,6 +11,8 @@ import collection.mutable.ListBuffer
 import fr.jbu.asyncperf.registry.ActorIdentifier
 import fr.jbu.asyncperf.user.{UserCommand, User, SequentialUserActor}
 import fr.jbu.asyncperf.core.injector.{InjectorRequest, InjectorResult}
+import java.net.URI
+import java.nio.ByteBuffer
 
 class TestSequentialUserActor extends FunSuite with BeforeAndAfterAll with ShouldMatchers with TestKit {
 
@@ -37,13 +39,13 @@ class TestSequentialUserActor extends FunSuite with BeforeAndAfterAll with Shoul
   test("Given user actor with one HttpCallAction When started Then HttpClientActor should receive one message with good uri") {
     var exceptedUri: String = ""
     val sequence: ListBuffer[(User) => Action] = new ListBuffer[(User) => Action]()
-    sequence += ((user: User) => new HttpCallAction(new HttpRequest("http://localhost:8080/")))
-    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(dumpActorRef), Some(reportingActorRef), Some(testActor), true)).start
+    sequence += ((user: User) => new HttpCallAction(new HttpRequest(new URI("http://localhost:8080/"))))
+    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(dumpActorRef), Some(reportingActorRef), Some(testActor), true, 1)).start
     userActorRef ! UserCommand.START
     within(1000 millis) {
       receiveWhile(1000 millis) {
         case request: InjectorRequest[HttpRequest] => {
-          exceptedUri = request.internalRequest.requestUri
+          exceptedUri = request.internalRequest.requestUri.toString
         }
       }
     }
@@ -55,13 +57,13 @@ class TestSequentialUserActor extends FunSuite with BeforeAndAfterAll with Shoul
   test("Given user actor with dump actived and one HttpCallAction When started Then user should dump transaction") {
     var exceptedResponseBody: String = ""
     val sequence: ListBuffer[(User) => Action] = new ListBuffer[(User) => Action]()
-    sequence += ((user: User) => new HttpCallAction(new HttpRequest("http://localhost:8080/")))
-    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(testActor), Some(reportingActorRef), Some(httpClientActor), true)).start
+    sequence += ((user: User) => new HttpCallAction(new HttpRequest(new URI("http://localhost:8080/"))))
+    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(testActor), Some(reportingActorRef), Some(httpClientActor), true, 1)).start
     userActorRef ! UserCommand.START
     within(1000 millis) {
       receiveWhile(1000 millis) {
         case transaction: InjectorResult[HttpRequest, Option[HttpResponse]] => {
-          exceptedResponseBody = transaction.response.get.body
+          exceptedResponseBody = new String(transaction.response.get.body.array())
         }
       }
     }
@@ -72,13 +74,13 @@ class TestSequentialUserActor extends FunSuite with BeforeAndAfterAll with Shoul
   test("Given user actor with dump deactived and one HttpCallAction When started Then user should not dump transaction") {
     var exceptedResponseBody: String = ""
     val sequence: ListBuffer[(User) => Action] = new ListBuffer[(User) => Action]()
-    sequence += ((user: User) => new HttpCallAction(new HttpRequest("http://localhost:8080/")))
-    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(testActor), Some(reportingActorRef), Some(httpClientActor), false)).start
+    sequence += ((user: User) => new HttpCallAction(new HttpRequest(new URI("http://localhost:8080/"))))
+    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(testActor), Some(reportingActorRef), Some(httpClientActor), false, 1)).start
     userActorRef ! UserCommand.START
     within(1000 millis) {
       receiveWhile(1000 millis) {
         case transaction: InjectorResult[HttpRequest, Option[HttpResponse]] => {
-          exceptedResponseBody = transaction.response.get.body
+          exceptedResponseBody = new String(transaction.response.get.body.array())
         }
       }
     }
@@ -91,14 +93,14 @@ class TestSequentialUserActor extends FunSuite with BeforeAndAfterAll with Shoul
     var exceptedUri1: String = ""
     var nbRequest: Int = 0
     val sequence: ListBuffer[(User) => Action] = new ListBuffer[(User) => Action]()
-    sequence += ((user: User) => new HttpCallAction(new HttpRequest("http://localhost:8080/")))
-    sequence += ((user: User) => new HttpCallAction(new HttpRequest("http://localhost:8080/")))
-    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(dumpActorRef), Some(reportingActorRef), Some(testActor), true)).start
+    sequence += ((user: User) => new HttpCallAction(new HttpRequest(new URI("http://localhost:8080/"))))
+    sequence += ((user: User) => new HttpCallAction(new HttpRequest(new URI("http://localhost:8080/"))))
+    val userActorRef = Actor.actorOf(new SequentialUserActor(sequence, Some(dumpActorRef), Some(reportingActorRef), Some(testActor), true, 1)).start
     userActorRef ! UserCommand.START
     within(1000 millis) {
       receiveWhile(1000 millis) {
         case request: InjectorRequest[HttpRequest] => {
-          exceptedUri1 = request.internalRequest.requestUri
+          exceptedUri1 = request.internalRequest.requestUri.toString
           nbRequest += 1
         }
       }
@@ -111,7 +113,7 @@ class TestSequentialUserActor extends FunSuite with BeforeAndAfterAll with Shoul
   object MockHttpClient extends HttpClient {
 
     def sendRequest(request: InjectorRequest[HttpRequest], startNanoTime: Long, callback: (InjectorRequest[HttpRequest], Option[HttpResponse], Long) => Unit) = {
-      callback(request, Some(new HttpResponse(200, "test body", "", new HttpHeader(scala.collection.mutable.Map.empty[String, String]))), System.nanoTime)
+      callback(request, Some(new HttpResponse(200, ByteBuffer.wrap("test body".getBytes), "", new HttpHeader(scala.collection.mutable.Map.empty[String, String]))), System.nanoTime)
     }
   }
 

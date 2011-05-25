@@ -6,6 +6,7 @@ import fr.jbu.asyncperf.core.injector.InjectorRequest
 import com.ning.http.client.{FluentCaseInsensitiveStringsMap, Response, AsyncCompletionHandler, AsyncHttpClient}
 import collection.mutable.HashMap
 import scala.collection.JavaConversions
+import java.nio.ByteBuffer
 
 class HttpClientBasedOnAHC extends HttpClient {
 
@@ -13,9 +14,9 @@ class HttpClientBasedOnAHC extends HttpClient {
 
   def sendRequest(request: InjectorRequest[HttpRequest], startNanoTime: Long, callback: (InjectorRequest[HttpRequest], Option[HttpResponse], Long) => Unit) = {
 
-    val f: Future[Unit] = asyncHttpClient.prepareGet(request.internalRequest.requestUri).execute(new AsyncCompletionHandler[Unit] {
+    val f: Future[Unit] = asyncHttpClient.prepareGet(request.internalRequest.requestUri.toString).execute(new AsyncCompletionHandler[Unit] {
       def onCompleted(ahcResponse: Response) {
-        val httpResponse: HttpResponse = new HttpResponse(ahcResponse.getStatusCode, ahcResponse.getUri.toString, ahcResponse.getResponseBody, new HttpHeader(convertHeader(ahcResponse.getHeaders)))
+        val httpResponse: HttpResponse = new HttpResponse(ahcResponse.getStatusCode, ByteBuffer.wrap(ahcResponse.getResponseBody.getBytes), ahcResponse.getUri.toString, new HttpHeader(convertHeader(ahcResponse.getHeaders)))
 
         callback(request, Some(httpResponse), startNanoTime)
       }

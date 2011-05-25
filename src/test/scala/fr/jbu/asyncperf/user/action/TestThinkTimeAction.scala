@@ -5,8 +5,6 @@ import akka.testkit.TestKit
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import java.util.concurrent.TimeUnit
 import fr.jbu.asyncperf.user.User
-import fr.jbu.asyncperf.core.injector.InjectorRequest
-import fr.jbu.asyncperf.core.injector.http.HttpRequest
 import akka.util.duration._
 import collection.mutable.ListBuffer
 
@@ -25,7 +23,7 @@ class TestThinkTimeAction extends FunSuite with BeforeAndAfterAll with ShouldMat
 
         protected def uuid = new akka.actor.Uuid
 
-        protected def httpClient = None
+        protected val httpClient = None
       })
       receiveWhile(7000 millis) {
 

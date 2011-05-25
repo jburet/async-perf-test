@@ -9,7 +9,7 @@ import fr.jbu.asyncperf.util.Slf4jLogger
 
 trait HttpCapability extends Slf4jLogger {
 
-  protected def httpClient: Option[ActorRef]
+  protected val httpClient: Option[ActorRef]
 
   protected def uuid: akka.actor.Uuid
 

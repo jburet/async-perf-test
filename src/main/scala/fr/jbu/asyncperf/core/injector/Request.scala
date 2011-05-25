@@ -4,4 +4,6 @@ import java.util.Date
 
 abstract class Request() {
   val timestamp: Date = new Date
+
+  def toXML:scala.xml.Elem
 }

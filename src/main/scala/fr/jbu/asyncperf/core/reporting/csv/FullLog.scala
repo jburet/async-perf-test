@@ -5,8 +5,7 @@ import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import fr.jbu.asyncperf.core.injector.{RequestType, Response, Request, InjectorResult}
 import java.nio.file.{StandardOpenOption, Paths, Path}
-import fr.jbu.asyncperf.core.injector.http.HttpMethod.HttpMethod
-import fr.jbu.asyncperf.core.injector.http.{HttpMethod, HttpResponse, HttpRequest}
+import fr.jbu.asyncperf.core.injector.http.{HttpMethodEnum, HttpMethod, HttpResponse, HttpRequest}
 
 /**
  *
@@ -58,9 +57,7 @@ class FullLog(csvFilePath: String) extends Reporting {
         buffer.put(csvLogSeparator)
         buffer.put(getHttpMethodLogName(httpRequest.httpMethod).getBytes)
         buffer.put(csvLogSeparator)
-        buffer.put(httpRequest.requestUri.getBytes)
-        buffer.put(csvLogSeparator)
-        buffer.put(httpRequest.queryParam.foldLeft("")((res, entry) => res + entry).getBytes)
+        buffer.put(httpRequest.requestUri.toString.getBytes)
         buffer.put(csvLogSeparator)
       }
       case _ => {
@@ -83,19 +80,19 @@ class FullLog(csvFilePath: String) extends Reporting {
 
   private def getHttpMethodLogName(httpMethod: HttpMethod): String = {
     httpMethod match {
-      case HttpMethod.GET => {
+      case HttpMethodEnum.GET => {
         "GET"
       }
-      case HttpMethod.POST => {
+      case HttpMethodEnum.POST => {
         "POST"
       }
-      case HttpMethod.HEAD => {
+      case HttpMethodEnum.HEAD => {
         "HEAD"
       }
-      case HttpMethod.PUT => {
+      case HttpMethodEnum.PUT => {
         "PUT"
       }
-      case HttpMethod.DELETE => {
+      case HttpMethodEnum.DELETE => {
         "DELETE"
       }
       case _ => {

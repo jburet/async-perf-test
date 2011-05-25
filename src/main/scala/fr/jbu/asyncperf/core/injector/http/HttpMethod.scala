@@ -1,8 +1,10 @@
 package fr.jbu.asyncperf.core.injector.http
 
-object HttpMethod {
+class HttpMethod {
 
-  abstract sealed class HttpMethod
+}
+
+object HttpMethodEnum {
 
   case object GET extends HttpMethod
 
